@@ -1,36 +1,57 @@
-import { Server } from 'socket.io';
+import { Server as SocketIOServer } from 'socket.io';
 
-// Socket.IO server instance (Next.js API route)
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 let io;
 
-export default function handler(req, res) {
+export async function GET(req) {
   if (!io) {
-    // Initialize Socket.IO server
-    io = new Server(res.socket.server, {
+    const res = new Response();
+    
+    // Initialize Socket.IO with the raw Node.js server
+    const httpServer = res.socket?.server;
+    if (!httpServer) {
+      return new Response('Server not ready', { status: 500 });
+    }
+
+    io = new SocketIOServer(httpServer, {
+      path: '/api/socket/io',
+      addTrailingSlash: false,
       cors: {
-        origin: "http://localhost:3000",
+        origin: "*",
         methods: ["GET", "POST"]
       }
     });
 
     // Store waiting sockets and pairs
-    const waitingSockets = [];
+    const waitingSockets = new Set();
     const pairs = new Map();
 
     io.on('connection', (socket) => {
       console.log('New connection:', socket.id);
 
       // Pairing logic
-      if (waitingSockets.length > 0) {
-        const partner = waitingSockets.pop();
-        pairs.set(socket.id, partner.id);
-        pairs.set(partner.id, socket.id);
+      if (waitingSockets.size > 0) {
+        // Get the first waiting socket
+        const [partnerId] = waitingSockets;
+        const partner = io.sockets.sockets.get(partnerId);
+        
+        if (partner) {
+          waitingSockets.delete(partnerId);
+          pairs.set(socket.id, partnerId);
+          pairs.set(partnerId, socket.id);
 
-        socket.emit('partnerFound', { shouldInitiate: true });
-        partner.emit('partnerFound', { shouldInitiate: false });
-        console.log(`Paired ${socket.id} with ${partner.id}`);
+          socket.emit('partnerFound', { shouldInitiate: true });
+          partner.emit('partnerFound', { shouldInitiate: false });
+          console.log(`Paired ${socket.id} with ${partnerId}`);
+        } else {
+          // If partner socket is invalid, add current socket to waiting list
+          waitingSockets.add(socket.id);
+          socket.emit('waiting', { message: 'Waiting for partner...' });
+        }
       } else {
-        waitingSockets.push(socket);
+        waitingSockets.add(socket.id);
         socket.emit('waiting', { message: 'Waiting for partner...' });
         console.log('Added to waiting list:', socket.id);
       }
@@ -38,13 +59,17 @@ export default function handler(req, res) {
       // Signal forwarding
       socket.on('signal', (data) => {
         const partnerId = pairs.get(socket.id);
-        if (partnerId) io.to(partnerId).emit('signal', data);
+        if (partnerId) {
+          io.to(partnerId).emit('signal', data);
+        }
       });
 
       // Chat forwarding
       socket.on('chat', (data) => {
         const partnerId = pairs.get(socket.id);
-        if (partnerId) io.to(partnerId).emit('chat', data);
+        if (partnerId) {
+          io.to(partnerId).emit('chat', data);
+        }
       });
 
       // Cleanup on disconnect
@@ -55,12 +80,16 @@ export default function handler(req, res) {
           pairs.delete(partnerId);
           pairs.delete(socket.id);
         }
-        const index = waitingSockets.findIndex(s => s.id === socket.id);
-        if (index > -1) waitingSockets.splice(index, 1);
+        waitingSockets.delete(socket.id);
+        console.log('Disconnected:', socket.id);
       });
     });
   }
 
-  // Required for Next.js API route
-  res.end();
+  return new Response('Socket server is running', {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/plain',
+    }
+  });
 }
