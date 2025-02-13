@@ -1,95 +1,82 @@
-import { Server as SocketIOServer } from 'socket.io';
+import { Server } from 'socket.io';
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
-let io;
-
-export async function GET(req) {
-  if (!io) {
-    const res = new Response();
-    
-    // Initialize Socket.IO with the raw Node.js server
-    const httpServer = res.socket?.server;
-    if (!httpServer) {
-      return new Response('Server not ready', { status: 500 });
-    }
-
-    io = new SocketIOServer(httpServer, {
-      path: '/api/socket/io',
+const ioHandler = (req, res) => {
+  if (!res.socket.server.io) {
+    const io = new Server(res.socket.server, {
+      path: '/api/socket',
       addTrailingSlash: false,
-      cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-      }
     });
 
-    // Store waiting sockets and pairs
-    const waitingSockets = new Set();
-    const pairs = new Map();
+    const users = new Map();
+    const waitingUsers = new Set();
 
     io.on('connection', (socket) => {
-      console.log('New connection:', socket.id);
+      console.log('User connected:', socket.id);
 
-      // Pairing logic
-      if (waitingSockets.size > 0) {
-        // Get the first waiting socket
-        const [partnerId] = waitingSockets;
-        const partner = io.sockets.sockets.get(partnerId);
-        
-        if (partner) {
-          waitingSockets.delete(partnerId);
-          pairs.set(socket.id, partnerId);
-          pairs.set(partnerId, socket.id);
-
-          socket.emit('partnerFound', { shouldInitiate: true });
-          partner.emit('partnerFound', { shouldInitiate: false });
-          console.log(`Paired ${socket.id} with ${partnerId}`);
-        } else {
-          // If partner socket is invalid, add current socket to waiting list
-          waitingSockets.add(socket.id);
-          socket.emit('waiting', { message: 'Waiting for partner...' });
-        }
-      } else {
-        waitingSockets.add(socket.id);
-        socket.emit('waiting', { message: 'Waiting for partner...' });
-        console.log('Added to waiting list:', socket.id);
-      }
-
-      // Signal forwarding
-      socket.on('signal', (data) => {
-        const partnerId = pairs.get(socket.id);
-        if (partnerId) {
-          io.to(partnerId).emit('signal', data);
-        }
+      socket.on('ready', () => {
+        waitingUsers.add(socket.id);
+        matchUsers();
       });
 
-      // Chat forwarding
-      socket.on('chat', (data) => {
-        const partnerId = pairs.get(socket.id);
-        if (partnerId) {
-          io.to(partnerId).emit('chat', data);
-        }
+      socket.on('offer', ({ offer, to }) => {
+        socket.to(to).emit('offer', { offer, from: socket.id });
       });
 
-      // Cleanup on disconnect
+      socket.on('answer', ({ answer, to }) => {
+        socket.to(to).emit('answer', { answer, from: socket.id });
+      });
+
+      socket.on('ice-candidate', ({ candidate, to }) => {
+        socket.to(to).emit('ice-candidate', { candidate, from: socket.id });
+      });
+
+      socket.on('next', () => {
+        const currentPeer = users.get(socket.id);
+        if (currentPeer) {
+          socket.to(currentPeer).emit('disconnected');
+          users.delete(socket.id);
+          users.delete(currentPeer);
+        }
+        waitingUsers.add(socket.id);
+        matchUsers();
+      });
+
       socket.on('disconnect', () => {
-        const partnerId = pairs.get(socket.id);
-        if (partnerId) {
-          io.to(partnerId).emit('partnerDisconnected');
-          pairs.delete(partnerId);
-          pairs.delete(socket.id);
+        const peer = users.get(socket.id);
+        if (peer) {
+          socket.to(peer).emit('disconnected');
+          users.delete(socket.id);
+          users.delete(peer);
         }
-        waitingSockets.delete(socket.id);
-        console.log('Disconnected:', socket.id);
+        waitingUsers.delete(socket.id);
+      });
+
+      socket.on('chat', ({ message, to }) => {
+        socket.to(to).emit('chat', { message, from: socket.id });
       });
     });
-  }
 
-  return new Response('Socket server is running', {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/plain',
+    function matchUsers() {
+      const waitingArray = Array.from(waitingUsers);
+      while (waitingArray.length >= 2) {
+        const user1 = waitingArray.shift();
+        const user2 = waitingArray.shift();
+        
+        users.set(user1, user2);
+        users.set(user2, user1);
+        
+        waitingUsers.delete(user1);
+        waitingUsers.delete(user2);
+        
+        io.to(user1).emit('matched', user2);
+        io.to(user2).emit('matched', user1);
+      }
     }
-  });
-}
+
+    res.socket.server.io = io;
+  }
+  res.end();
+};
+
+export const GET = ioHandler;
+export const POST = ioHandler;
