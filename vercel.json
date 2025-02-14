@@ -1,26 +1,11 @@
 {
-    "version": 2,
-    "builds": [
-      { "src": "src/server.js", "use": "@vercel/node" },
-      { "src": "public/**", "use": "@vercel/static" }
-    ],
-    "routes": [
-      { "src": "/socket.io/(.*)", "dest": "src/server.js" },
-      { "src": "/(.*)", "dest": "/public/$1" }
-    ],
-    "headers": [
-    {
-      "source": "/socket.io/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store, no-cache, must-revalidate, proxy-revalidate"
-        },
-        {
-          "key": "Connection",
-          "value": "keep-alive"
-        }
-      ]
-    }
+  "version": 2,
+  "builds": [
+    { "src": "src/server.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/socket.io/(.*)", "dest": "src/server.js" },
+    { "src": "/(.*)", "dest": "/public/$1" }
   ]
-  }
+}
