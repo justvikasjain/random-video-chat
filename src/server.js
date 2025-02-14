@@ -1,7 +1,16 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const io = require('socket.io')(http, {
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true
+  });
 
 app.use(express.static('public'));
 
