@@ -105,7 +105,12 @@
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 
     <script>
-        const socket = io();
+       const socket = io({
+            transports: ['websocket', 'polling'],
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            timeout: 20000
+        });
         let peerConnection;
         let localStream;
         let currentPartnerId;
