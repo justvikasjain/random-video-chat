@@ -14,44 +14,33 @@ const io = require('socket.io')(http, {
 
 app.use(express.static('public'));
 
-const waitingUsers = new Set();
+const waitingQueue = [];
 const chatPairs = new Map();
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
     socket.on('start_chat', () => {
-        if (waitingUsers.size > 0) {
-            let partnerId;
-            
-            // Loop through waiting users to find a different user
-            for (const waitingUserId of waitingUsers) {
-                if (waitingUserId !== socket.id) {
-                    partnerId = waitingUserId;
-                    break;
-                }
-            }
+        // Check if there is a waiting user to match with
+        while (waitingQueue.length > 0) {
+          const partnerId = waitingQueue.shift();
+          // Make sure the partner is not the current socket and is still connected
+          if (partnerId !== socket.id && io.sockets.sockets.get(partnerId)) {
+            // We found a valid partner.
+            chatPairs.set(socket.id, partnerId);
+            chatPairs.set(partnerId, socket.id);
     
-            // Only proceed if we found a different partner
-            if (partnerId) {
-                waitingUsers.delete(partnerId);
-                waitingUsers.delete(socket.id);
-    
-                chatPairs.set(socket.id, partnerId);
-                chatPairs.set(partnerId, socket.id);
-    
-                io.to(socket.id).emit('chat_started', { initiator: true, partnerId });
-                io.to(partnerId).emit('chat_started', { initiator: false, partnerId: socket.id });
-            } else {
-                // If no suitable partner found, add to waiting list
-                waitingUsers.add(socket.id);
-                socket.emit('waiting');
-            }
-        } else {
-            waitingUsers.add(socket.id);
-            socket.emit('waiting');
+            io.to(socket.id).emit('chat_started', { initiator: true, partnerId });
+            io.to(partnerId).emit('chat_started', { initiator: false, partnerId: socket.id });
+            return; // Exit after successful pairing
+          }
+          // If partnerId is invalid (disconnected), continue the loop.
         }
-    });
+    
+        // No valid partner was found; add the current socket to the waiting queue.
+        waitingQueue.push(socket.id);
+        socket.emit('waiting');
+      });
 
     // WebRTC Signaling
     socket.on('offer', (data) => {
@@ -89,8 +78,15 @@ io.on('connection', (socket) => {
             chatPairs.delete(partnerId);
             chatPairs.delete(socket.id);
         }
-        waitingUsers.delete(socket.id);
+        removeFromQueue(socket.id);
     });
+
+    function removeFromQueue(socketId) {
+        const index = waitingQueue.indexOf(socketId);
+        if (index !== -1) {
+            waitingQueue.splice(index, 1);
+        }
+    }
 
     socket.on('skip', () => {
         const oldPartnerId = chatPairs.get(socket.id);
