@@ -21,18 +21,32 @@ io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
     socket.on('start_chat', () => {
-        if (waitingUsers.has(socket.id)) return;
-
         if (waitingUsers.size > 0) {
-            const iterator = waitingUsers.values();
-            const partnerId = iterator.next().value;
-            waitingUsers.delete(partnerId);
-
-            chatPairs.set(socket.id, partnerId);
-            chatPairs.set(partnerId, socket.id);
-
-            io.to(socket.id).emit('chat_started', { initiator: true, partnerId });
-            io.to(partnerId).emit('chat_started', { initiator: false, partnerId: socket.id });
+            let partnerId;
+            
+            // Loop through waiting users to find a different user
+            for (const waitingUserId of waitingUsers) {
+                if (waitingUserId !== socket.id) {
+                    partnerId = waitingUserId;
+                    break;
+                }
+            }
+    
+            // Only proceed if we found a different partner
+            if (partnerId) {
+                waitingUsers.delete(partnerId);
+                waitingUsers.delete(socket.id);
+    
+                chatPairs.set(socket.id, partnerId);
+                chatPairs.set(partnerId, socket.id);
+    
+                io.to(socket.id).emit('chat_started', { initiator: true, partnerId });
+                io.to(partnerId).emit('chat_started', { initiator: false, partnerId: socket.id });
+            } else {
+                // If no suitable partner found, add to waiting list
+                waitingUsers.add(socket.id);
+                socket.emit('waiting');
+            }
         } else {
             waitingUsers.add(socket.id);
             socket.emit('waiting');

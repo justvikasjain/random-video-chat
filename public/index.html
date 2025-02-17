@@ -282,11 +282,12 @@
                 peerConnection.close();
             }
             remoteVideo.srcObject = null;
-            statusDiv.textContent = 'Partner disconnected. Click "Start Chat" to find someone new.';
+            statusDiv.textContent = 'Partner disconnected. Looking for a new partner....';
             messageInput.disabled = true;
             sendBtn.disabled = true;
             skipBtn.disabled = true;
             startBtn.disabled = false;
+            socket.emit('start_chat');
         });
 
         // Clean up when leaving the page
