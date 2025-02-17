@@ -456,13 +456,17 @@
 
       // Event listeners
       startBtn.addEventListener("click", async () => {
+        startNewChat();
+      });
+
+      async function startNewChat(){
         if (!localStream) {
           await initializeMedia();
         }
         socket.emit("start_chat");
         startBtn.disabled = true;
         statusDiv.textContent = "Looking for a partner...";
-      });
+      }
 
       skipBtn.addEventListener("click", () => {
         if (peerConnection) {
@@ -475,6 +479,7 @@
         sendBtn.disabled = true;
         skipBtn.disabled = true;
         statusDiv.textContent = "Looking for a new partner...";
+        startNewChat(); 
       });
 
       sendBtn.addEventListener("click", sendMessage);

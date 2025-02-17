@@ -99,7 +99,6 @@ io.on('connection', (socket) => {
             chatPairs.delete(oldPartnerId);
             chatPairs.delete(socket.id);
         }
-        socket.emit('start_chat');
     });
 });
 
