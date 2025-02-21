@@ -101,6 +101,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('create_room', ({ name, isPrivate, maxParticipants = 10 }) => {
+        console.log("creating room"); 
         const roomId = isPrivate ? generateRoomCode() : name.toLowerCase().replace(/\s+/g, '-');
 
         if (rooms.has(roomId)) {
