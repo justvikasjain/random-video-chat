@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Video Chat Rooms</title>
+        <style>
+            /* Previous styles remain the same */
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+                background-color: #f3f4f6;
+                min-height: 100vh;
+                padding: 1rem;
+            }
+
+            .container {
+                max-width: 1280px;
+                margin: 0 auto;
+            }
+
+            h1 {
+                text-align: center;
+                color: #1f2937;
+                font-size: 2rem;
+                margin-bottom: 1rem;
+            }
+            .room-section {
+                background-color: white;
+                border-radius: 0.5rem;
+                padding: 1rem;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                margin-bottom: 1rem;
+            }
+
+            .room-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 1rem;
+                margin-top: 1rem;
+            }
+
+            .room-card {
+                background-color: #f3f4f6;
+                border-radius: 0.5rem;
+                padding: 1rem;
+                cursor: pointer;
+                transition: transform 0.2s;
+            }
+
+            .room-card:hover {
+                transform: translateY(-2px);
+            }
+
+            .room-card h3 {
+                margin: 0 0 0.5rem 0;
+                color: #1f2937;
+            }
+
+            .room-card p {
+                margin: 0;
+                color: #4b5563;
+                font-size: 0.875rem;
+            }
+
+            .room-form {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .form-group {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .form-group label {
+                color: #374151;
+                font-weight: 500;
+            }
+
+            .form-group input {
+                padding: 0.5rem;
+                border: 1px solid #d1d5db;
+                border-radius: 0.375rem;
+                font-size: 1rem;
+            }
+
+            .form-group input[type="checkbox"] {
+                width: auto;
+            }
+
+            .tabs {
+                display: flex;
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .tab {
+                padding: 0.5rem 1rem;
+                border: none;
+                background: none;
+                cursor: pointer;
+                border-bottom: 2px solid transparent;
+                color: #4b5563;
+                font-weight: 500;
+            }
+
+            .tab.active {
+                color: #3b82f6;
+                border-bottom-color: #3b82f6;
+            }
+
+            #participants-list {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 1rem;
+                margin-top: 1rem;
+            }
+
+            .participant-video {
+                aspect-ratio: 16/9;
+                background-color: #1f2937;
+                border-radius: 0.5rem;
+                overflow: hidden;
+                position: relative;
+            }
+
+            .participant-video video {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .participant-label {
+                position: absolute;
+                bottom: 0.5rem;
+                left: 0.5rem;
+                background-color: rgba(0, 0, 0, 0.5);
+                color: white;
+                padding: 0.25rem 0.5rem;
+                border-radius: 0.25rem;
+                font-size: 0.875rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container"></div>
+            <h1>Video Chat Rooms</h1>
+            <div id="status">Select a room to join or create a new one</div>
+
+            <div class="room-section"></div>
+                <div class="tabs"></div>
+                    <button class="tab active" data-tab="join">Join Room</button>
+                    <button class="tab" data-tab="create">Create Room</button>
+                </div>
+
+                <div id="join-room" class="tab-content"></div>
+                    <div class="form-group"></div>
+                        <label for="room-code">Room Code:</label>
+                        <div class="input-container">
+                            <input type="text" id="room-code" placeholder="Enter room code" />
+                            <button id="join-btn" class="primary-btn">Join Room</button>
+                        </div>
+                    </div>
+
+                    <h2>Public Rooms</h2>
+                    <div id="public-rooms" class="room-grid"></div>
+                </div>
+
+                <div id="create-room" class="tab-content" style="display: none">
+                    <form class="room-form" id="create-room-form">
+                        <div class="form-group">
+                            <label for="room-name">Room Name:</label>
+                            <input type="text" id="room-name" required />
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="room-private" />
+                                Private Room
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="max-participants">Max Participants:</label>
+                            <input
+                                type="number"
+                                id="max-participants"
+                                min="2"
+                                max="50"
+                                value="10"
+                            />
+                        </div>
+                        <button type="submit" class="primary-btn">Create Room</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="room-content" style="display: none"></div>
+                <div id="participants-list"></div>
+                <div class="content">
+                    <div class="chat-section"></div>
+                        <div id="chat-container"></div>
+                        <div class="input-container">
+                            <input
+                                type="text"
+                                id="message-input"
+                                placeholder="Type your message..."
+                            />
+                            <button id="send-btn">Send</button>
+                        </div>
+                    </div>
+                    <button id="leave-btn" class="secondary-btn">Leave Room</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
+        <script>
+            // Initialize Socket.IO connection
+            const socket = io({
+                transports: ["websocket", "polling"],
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000,
+                timeout: 20000,
+            });
+
+            // DOM elements
+            const statusDiv = document.getElementById("status");
+            const publicRoomsDiv = document.getElementById("public-rooms");
+            const createRoomForm = document.getElementById("create-room-form");
+            const roomContent = document.getElementById("room-content");
+            const participantsList = document.getElementById("participants-list");
+            const chatContainer = document.getElementById("chat-container");
+            const messageInput = document.getElementById("message-input");
+            const sendBtn = document.getElementById("send-btn");
+            const leaveBtn = document.getElementById("leave-btn");
+            const joinBtn = document.getElementById("join-btn");
+            const roomCodeInput = document.getElementById("room-code");
+
+            // WebRTC variables
+            let peerConnections = new Map();
+            let localStream;
+
+            // Tab switching
+            document.querySelectorAll(".tab").forEach((tab) => {
+                tab.addEventListener("click", () => {
+                    document
+                        .querySelectorAll(".tab")
+                        .forEach((t) => t.classList.remove("active"));
+                    tab.classList.add("active");
+
+                    document.querySelectorAll(".tab-content").forEach((content) => {
+                        content.style.display = "none";
+                    });
+
+                    document.getElementById(tab.dataset.tab + "-room").style.display =
+                        "block";
+                });
+            });
+
+            // Initialize media stream
+            async function initializeMedia() {
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: true,
+                    });
+                    return true;
+                } catch (error) {
+                    console.error("Error accessing media devices:", error);
+                    alert("Unable to access camera and microphone");
+                    return false;
+                }
+            }
+
+            // Create WebRTC peer connection
+            async function createPeerConnection(participantId) {
+                const peerConnection = new RTCPeerConnection({
+                    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+                });
+
+                // Add local stream
+                localStream.getTracks().forEach((track) => {
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                // Handle incoming stream
+                peerConnection.ontrack = (event) => {
+                    const participantVideo = document.querySelector(
+                        `#participant-${participantId} video`
+                    );
+                    if (participantVideo) {
+                        participantVideo.srcObject = event.streams[0];
+                    }
+                };
+
+                // Handle ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        socket.emit("room_ice-candidate", {
+                            candidate: event.candidate,
+                            to: participantId,
+                        });
+                    }
+                };
+                peerConnections.set(participantId, peerConnection);
+                return peerConnection;
+            }
+
+            // Handle socket events
+            socket.on("room_created", async ({ roomId, name, isPrivate }) => {
+                statusDiv.textContent = `Room "${name}" created successfully. Room code: ${roomId}`;
+                if (!isPrivate) {
+                    updatePublicRooms();
+                }
+                await joinRoom(roomId);
+            });
+
+            socket.on("room_joined", async ({ roomId, participants, isCreator }) => {
+                statusDiv.textContent = `Joined room successfully`;
+                roomContent.style.display = "block";
+                document.querySelector(".room-section").style.display = "none";
+
+                // Initialize media if not already done
+                if (!localStream) {
+                    const success = await initializeMedia();
+                    if (!success) return;
+                }
+
+                // Add local video
+                addParticipantVideo(socket.id, localStream, "You");
+
+                // Create peer connections with existing participants
+                for (const participantId of participants) {
+                    if (participantId !== socket.id) {
+                        const pc = await createPeerConnection(participantId);
+                        try {
+                            const offer = await pc.createOffer();
+                            await pc.setLocalDescription(offer);
+                            socket.emit("room_offer", {
+                                offer: offer,
+                                to: participantId,
+                            });
+                        } catch (error) {
+                            console.error("Error creating offer:", error);
+                        }
+                    }
+                }
+            });
+
+            socket.on(
+                "room_participant_joined",
+                async ({ participantId, participantCount }) => {
+                    statusDiv.textContent = `Participant joined. Total participants: ${participantCount}`;
+                    // New participant will send us an offer
+                }
+            );
+
+            socket.on("room_participant_left", ({ participantId, participantCount }) => {
+                statusDiv.textContent = `Participant left. Total participants: ${participantCount}`;
+                removeParticipantVideo(participantId);
+                const pc = peerConnections.get(participantId);
+                if (pc) {
+                    pc.close();
+                    peerConnections.delete(participantId);
+                }
+            });
+
+            socket.on("room_offer", async (data) => {
+                const pc = await createPeerConnection(data.from);
+                try {
+                    await pc.setRemoteDescription(data.offer);
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    socket.emit("room_answer", {
+                        answer: answer,
+                        to: data.from,
+                    });
+                } catch (error) {
+                    console.error("Error handling offer:", error);
+                }
+            });
+
+            socket.on("room_answer", async (data) => {
+                const pc = peerConnections.get(data.from);
+                if (pc) {
+                    try {
+                        await pc.setRemoteDescription(data.answer);
+                    } catch (error) {
+                        console.error("Error handling answer:", error);
+                    }
+                }
+            });
+
+            socket.on("room_ice-candidate", async (data) => {
+                const pc = peerConnections.get(data.from);
+                if (pc) {
+                    try {
+                        await pc.addIceCandidate(data.candidate);
+                    } catch (error) {
+                        console.error("Error adding ICE candidate:", error);
+                    }
+                }
+            });
+
+            socket.on("room_public_rooms_list", (rooms) => {
+                publicRoomsDiv.innerHTML = "";
+                rooms.forEach((room) => {
+                    const roomCard = document.createElement("div");
+                    roomCard.className = "room-card";
+                    roomCard.innerHTML = `
+                        <h3>${room.name}</h3>
+                        <p>Participants: ${room.participants}/${room.maxParticipants}</p>
+                    `;
+                    roomCard.addEventListener("click", () => joinRoom(room.id));
+                    publicRoomsDiv.appendChild(roomCard);
+                });
+            });
+
+            socket.on("room_error", (error) => {
+                alert(error);
+                statusDiv.textContent = error;
+            });
+
+            // UI Helper functions
+            function addParticipantVideo(participantId, stream, label) {
+                const participantDiv = document.createElement("div");
+                participantDiv.id = `participant-${participantId}`;
+                participantDiv.className = "participant-video";
+
+                const video = document.createElement("video");
+                video.autoplay = true;
+                video.playsInline = true;
+                if (participantId === socket.id) video.muted = true;
+                video.srcObject = stream;
+
+                const labelDiv = document.createElement("div");
+                labelDiv.className = "participant-label";
+                labelDiv.textContent = label;
+
+                participantDiv.appendChild(video);
+                participantDiv.appendChild(labelDiv);
+                participantsList.appendChild(participantDiv);
+            }
+
+            function removeParticipantVideo(participantId) {
+                const participantDiv = document.getElementById(
+                    `participant-${participantId}`
+                );
+                if (participantDiv) {
+                    participantDiv.remove();
+                }
+            }
+
+            // Event listeners
+            createRoomForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const name = document.getElementById("room-name").value;
+                const isPrivate = document.getElementById("room-private").checked;
+                const maxParticipants = parseInt(
+                    document.getElementById("max-participants").value
+                );
+
+                socket.emit("create_room", { name, isPrivate, maxParticipants });
+            });
+
+            joinBtn.addEventListener("click", () => {
+                const roomCode = roomCodeInput.value.trim();
+                if (roomCode) {
+                    joinRoom(roomCode);
+                }
+            });
+
+            async function joinRoom(roomId) {
+                if (!localStream) {
+                    const success = await initializeMedia();
+                    if (!success) return;
+                }
+                socket.emit("join_room", roomId);
+            }
+
+            leaveBtn.addEventListener("click", () => {
+                socket.emit("leave_room");
+                cleanup();
+                roomContent.style.display = "none";
+                document.querySelector(".room-section").style.display = "block";
+                statusDiv.textContent = "Select a room to join or create a new one";
+            });
+
+            sendBtn.addEventListener("click", () => {
+                const message = messageInput.value.trim();
+                if (message) {
+                    socket.emit("room_send_message", message);
+                    appendMessage(message, "sent");
+                    messageInput.value = "";
+                }
+            });
+
+            messageInput.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") {
+                    sendBtn.click();
+                }
+            });
+
+            function appendMessage(message, type) {
+                const messageDiv = document.createElement("div");
+                messageDiv.className = `message ${type}`;
+                messageDiv.textContent = message;
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            function cleanup() {
+                // Close all peer connections
+                peerConnections.forEach((pc) => pc.close());
+                peerConnections.clear();
+
+                // Clear participants list
+                participantsList.innerHTML = "";
+
+                // Clear chat
+                chatContainer.innerHTML = "";
+            }
+
+            // Initial load of public rooms
+            socket.emit("get_public_rooms");
+
+            // Clean up when leaving the page
+            window.onbeforeunload = () => {
+                cleanup();
+                if (localStream) {
+                    localStream.getTracks().forEach((track) => track.stop());
+                }
+            };
+        </script>
+    </body>
+</html>

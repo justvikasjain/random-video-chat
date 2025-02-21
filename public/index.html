@@ -229,6 +229,24 @@
       #skip-btn:hover:not(:disabled) {
         background-color: #dc2626;
       }
+
+      .rooms-btn {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        background-color: #4f46e5;
+      }
     </style>
   </head>
   <body>
@@ -312,7 +330,7 @@
         </div>
       </div>
     </div>
-
+    <button class="rooms-btn" onclick="window.location.href='rooms.html'">Go to rooms</button>
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 
     <script>
