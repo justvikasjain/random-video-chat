@@ -118,11 +118,10 @@ io.on('connection', (socket) => {
 
         socket.emit('room_created', { roomId, name, isPrivate });
         if (!isPrivate) {
-            io.emit('update_public_rooms', getPublicRooms());
+            io.emit('room_public_rooms_list', getPublicRooms());
         }
     });
 
-    // Join a room
     socket.on('join_room', async (roomId) => {
         const room = rooms.get(roomId);
 
@@ -147,17 +146,16 @@ io.on('connection', (socket) => {
         userRooms.set(socket.id, roomId);
         socket.join(roomId);
 
-        // Notify others in room
-        socket.to(roomId).emit('room_participant_joined', {
+        // Notify everyone in room including the new participant
+        io.in(roomId).emit('room_participant_joined', {
             participantId: socket.id,
             participantCount: room.participants.size
         });
 
         // Send existing participants to new user
-        const participantIds = Array.from(room.participants);
         socket.emit('room_joined', {
             roomId,
-            participants: participantIds,
+            participants: Array.from(room.participants),
             isCreator: room.creator === socket.id
         });
     });
@@ -166,21 +164,30 @@ io.on('connection', (socket) => {
     socket.on('room_offer', (data) => {
         const roomId = userRooms.get(socket.id);
         if (roomId) {
-            socket.to(data.to).emit('room_offer', data);
+            io.to(data.to).emit('room_offer', {
+                offer: data.offer,
+                from: socket.id
+            });
         }
     });
 
     socket.on('room_answer', (data) => {
         const roomId = userRooms.get(socket.id);
         if (roomId) {
-            socket.to(data.to).emit('room_answer', data);
+            io.to(data.to).emit('room_answer', {
+                answer: data.answer,
+                from: socket.id
+            });
         }
     });
 
     socket.on('room_ice-candidate', (data) => {
         const roomId = userRooms.get(socket.id);
         if (roomId) {
-            socket.to(data.to).emit('room_ice-candidate', data);
+            io.to(data.to).emit('room_ice-candidate', {
+                candidate: data.candidate,
+                from: socket.id
+            });
         }
     });
 
@@ -188,14 +195,15 @@ io.on('connection', (socket) => {
     socket.on('room_send_message', (message) => {
         const roomId = userRooms.get(socket.id);
         if (roomId) {
-            socket.to(roomId).emit('receive_message', {
+            // Broadcast to everyone in the room including sender
+            io.in(roomId).emit('room_receive_message', {
                 senderId: socket.id,
-                message
+                message,
+                timestamp: Date.now()
             });
         }
     });
 
-    // Leave room
     socket.on('leave_room', async () => {
         const roomId = userRooms.get(socket.id);
         if (roomId) {
@@ -203,12 +211,10 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Get list of public rooms
     socket.on('get_public_rooms', () => {
         socket.emit('room_public_rooms_list', getPublicRooms());
     });
 
-    // Handle disconnection
     socket.on('disconnect', async () => {
         const roomId = userRooms.get(socket.id);
         if (roomId) {
@@ -243,16 +249,18 @@ io.on('connection', (socket) => {
             userRooms.delete(socket.id);
             socket.leave(roomId);
 
-            // Notify others in room
-            socket.to(roomId).emit('room_participant_left', {
+            // Notify everyone in room
+            io.in(roomId).emit('room_participant_left', {
                 participantId: socket.id,
                 participantCount: room.participants.size
             });
 
-            // If room is empty and not private, delete it
-            if (room.participants.size === 0 && !room.isPrivate) {
+            // If room is empty, delete it and update public rooms list
+            if (room.participants.size === 0) {
                 rooms.delete(roomId);
-                io.emit('update_public_rooms', getPublicRooms());
+                if (!room.isPrivate) {
+                    io.emit('room_public_rooms_list', getPublicRooms());
+                }
             }
         }
     }
