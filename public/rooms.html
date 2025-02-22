@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Chat Rooms</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+        background-color: #f3f4f6;
+        min-height: 100vh;
+        padding: 2rem;
+      }
+
+      .container {
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+
+      h1,
+      h2 {
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+      }
+
+      h1 {
+        text-align: center;
+        font-size: 2rem;
+      }
+
+      h2 {
+        font-size: 1.5rem;
+        margin-top: 2rem;
+      }
+
+      .room-section {
+        background-color: white;
+        border-radius: 0.75rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+      }
+
+      /* Tabs styles */
+      .tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 0.5rem;
+      }
+
+      .tab {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #6b7280;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+      }
+
+      .tab:hover {
+        color: #3b82f6;
+      }
+
+      .tab.active {
+        color: #3b82f6;
+        border-bottom: 2px solid #3b82f6;
+      }
+
+      /* Form styles */
+      .room-form {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      .form-group label {
+        display: block;
+        color: #374151;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+      }
+
+      .form-group input[type="text"],
+      .form-group input[type="number"] {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+      }
+
+      .form-group input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      .form-group .checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      /* Buttons */
+      .primary-btn,
+      .secondary-btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .primary-btn {
+        background-color: #3b82f6;
+        color: white;
+      }
+
+      .primary-btn:hover {
+        background-color: #2563eb;
+      }
+
+      .secondary-btn {
+        background-color: #e5e7eb;
+        color: #374151;
+      }
+
+      .secondary-btn:hover {
+        background-color: #d1d5db;
+      }
+
+      /* Room grid */
+      .room-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+      }
+
+      .room-card {
+        background-color: #f9fafb;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid #e5e7eb;
+      }
+
+      .room-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Chat and participants */
+      #room-content {
+        background-color: white;
+        border-radius: 0.75rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      #participants-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      .participant-video {
+        aspect-ratio: 16/9;
+        background-color: #1f2937;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .participant-video video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .participant-label {
+        position: absolute;
+        bottom: 0.75rem;
+        left: 0.75rem;
+        background-color: rgba(0, 0, 0, 0.75);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+      }
+
+      /* Chat section */
+      .chat-section {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+
+      #chat-container {
+        height: 300px;
+        overflow-y: auto;
+        padding: 1rem;
+      }
+
+      .input-container {
+        display: flex;
+        gap: 0.5rem;
+        padding: 1rem;
+        border-top: 1px solid #e5e7eb;
+      }
+
+      #message-input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+      }
+
+      /* Messages */
+      .message {
+        margin-bottom: 0.5rem;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        max-width: 80%;
+      }
+
+      .message.sent {
+        background-color: #3b82f6;
+        color: white;
+        margin-left: auto;
+      }
+
+      .message.received {
+        background-color: #f3f4f6;
+        color: #1f2937;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>Video Chat Rooms</h1>
+      <div id="status">Select a room to join or create a new one</div>
+
+      <div class="room-section">
+        <div class="tabs">
+          <button class="tab active" data-tab="join">Join Room</button>
+          <button class="tab" data-tab="create">Create Room</button>
+        </div>
+
+        <div id="join-room" class="tab-content">
+          <div class="form-group">
+            <label for="room-code">Room Code:</label>
+            <div class="input-container">
+              <input type="text" id="room-code" placeholder="Enter room code" />
+              <button id="join-btn" class="primary-btn">Join Room</button>
+            </div>
+          </div>
+
+          <h2>Public Rooms</h2>
+          <div id="public-rooms" class="room-grid"></div>
+        </div>
+
+        <div id="create-room" class="tab-content" style="display: none">
+          <!-- Replace the existing create-room-form content -->
+          <form class="room-form" id="create-room-form">
+            <div class="form-group">
+              <label for="room-name">Room Name:</label>
+              <input
+                type="text"
+                id="room-name"
+                required
+                placeholder="Enter room name"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="max-participants">Maximum Participants:</label>
+              <input
+                type="number"
+                id="max-participants"
+                required
+                min="2"
+                max="12"
+                value="4"
+              />
+            </div>
+
+            <div class="form-group">
+              <div class="checkbox-container">
+                <input type="checkbox" id="room-private" />
+                <label for="room-private">Private Room</label>
+              </div>
+            </div>
+
+            <button type="submit" class="primary-btn">Create Room</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="room-content" style="display: none">
+        <div id="participants-list"></div>
+        <div class="content">
+          <div class="chat-section">
+            <div id="chat-container"></div>
+            <div class="input-container">
+              <input
+                type="text"
+                id="message-input"
+                placeholder="Type your message..."
+              />
+              <button id="send-btn">Send</button>
+            </div>
+          </div>
+        </div>
+        <button id="leave-btn" class="secondary-btn">Leave Room</button>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
+    <script>
+      // Initialize Socket.IO connection
+      const socket = io({
+        transports: ["websocket", "polling"],
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 20000,
+      });
+
+      // DOM elements
+      const statusDiv = document.getElementById("status");
+      const publicRoomsDiv = document.getElementById("public-rooms");
+      const createRoomForm = document.getElementById("create-room-form");
+      const roomContent = document.getElementById("room-content");
+      const participantsList = document.getElementById("participants-list");
+      const chatContainer = document.getElementById("chat-container");
+      const messageInput = document.getElementById("message-input");
+      const sendBtn = document.getElementById("send-btn");
+      const leaveBtn = document.getElementById("leave-btn");
+      const joinBtn = document.getElementById("join-btn");
+      const roomCodeInput = document.getElementById("room-code");
+
+      // WebRTC variables
+      let peerConnections = new Map();
+      let localStream;
+      let currentRoom ;
+
+      // Tab switching
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document
+            .querySelectorAll(".tab")
+            .forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+
+          document.querySelectorAll(".tab-content").forEach((content) => {
+            content.style.display = "none";
+          });
+
+          document.getElementById(tab.dataset.tab + "-room").style.display =
+            "block";
+        });
+      });
+
+      // Initialize media stream
+      async function initializeMedia() {
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+          return true;
+        } catch (error) {
+          console.error("Error accessing media devices:", error);
+          alert("Unable to access camera and microphone");
+          return false;
+        }
+      }
+
+      // Create WebRTC peer connection
+      async function createPeerConnection(participantId) {
+        if (peerConnections.has(participantId)) {
+          return peerConnections.get(participantId);
+        }
+
+        const peerConnection = new RTCPeerConnection({
+          iceServers: [
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+          ],
+        });
+
+        // Add local stream
+        localStream.getTracks().forEach((track) => {
+          peerConnection.addTrack(track, localStream);
+        });
+
+        // Handle incoming stream
+        peerConnection.ontrack = (event) => {
+          const remoteStream = event.streams[0];
+          const existingVideo = document.querySelector(
+            `#participant-${participantId} video`
+          );
+
+          if (!existingVideo) {
+            addParticipantVideo(participantId, remoteStream, "Participant");
+          } else if (existingVideo.srcObject !== remoteStream) {
+            existingVideo.srcObject = remoteStream;
+          }
+        };
+
+        // Handle ICE candidates
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("room_ice-candidate", {
+              candidate: event.candidate,
+              to: participantId,
+            });
+          }
+        };
+
+        // Handle connection state changes
+        peerConnection.onconnectionstatechange = () => {
+          if (peerConnection.connectionState === "failed") {
+            peerConnection.restartIce();
+          }
+        };
+
+        peerConnections.set(participantId, peerConnection);
+        return peerConnection;
+      }
+      // Handle socket events
+      socket.on("room_created", async ({ roomId, name, isPrivate }) => {
+        statusDiv.textContent = `Room "${name}" created successfully. Room code: ${roomId}`;
+        if (!isPrivate) {
+          updatePublicRooms();
+        }
+        await joinRoom(roomId);
+      });
+
+      socket.on("room_joined", async ({ roomId, participants }) => {
+        currentRoom = roomId;
+        statusDiv.textContent = `Joined room successfully`;
+        roomContent.style.display = "block";
+        document.querySelector(".room-section").style.display = "none";
+
+        // Initialize media if not already done
+        if (!localStream) {
+          const success = await initializeMedia();
+          if (!success) return;
+        }
+
+        // Add local video
+        addParticipantVideo(socket.id, localStream, "You");
+
+        // Create peer connections with existing participants
+        for (const participantId of participants) {
+          if (participantId !== socket.id) {
+            const pc = await createPeerConnection(participantId);
+            try {
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+              socket.emit("room_offer", {
+                offer: offer,
+                to: participantId,
+              });
+            } catch (error) {
+              console.error("Error creating offer:", error);
+            }
+          }
+        }
+      });
+      socket.on(
+        "room_participant_joined",
+        async ({ participantId, participantCount }) => {
+          statusDiv.textContent = `Participant joined. Total participants: ${participantCount}`;
+          if (participantId !== socket.id) {
+            await createPeerConnection(participantId);
+          }
+        }
+      );
+
+      socket.on(
+        "room_participant_left",
+        ({ participantId, participantCount }) => {
+          statusDiv.textContent = `Participant left. Total participants: ${participantCount}`;
+          removeParticipantVideo(participantId);
+          const pc = peerConnections.get(participantId);
+          if (pc) {
+            pc.close();
+            peerConnections.delete(participantId);
+          }
+        }
+      );
+
+      socket.on("room_offer", async (data) => {
+        const pc = await createPeerConnection(data.from);
+        try {
+          await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket.emit("room_answer", {
+            answer: answer,
+            to: data.from,
+          });
+        } catch (error) {
+          console.error("Error handling offer:", error);
+        }
+      });
+
+      socket.on("room_answer", async (data) => {
+        const pc = peerConnections.get(data.from);
+        if (pc) {
+          try {
+            await pc.setRemoteDescription(
+              new RTCSessionDescription(data.answer)
+            );
+          } catch (error) {
+            console.error("Error handling answer:", error);
+          }
+        }
+      });
+
+      socket.on("room_ice-candidate", async (data) => {
+        const pc = peerConnections.get(data.from);
+        if (pc) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+          } catch (error) {
+            console.error("Error adding ICE candidate:", error);
+          }
+        }
+      });
+
+      socket.on("room_receive_message", (data) => {
+        const type = data.senderId === socket.id ? "sent" : "received";
+        appendMessage(data.message, type, data.senderId);
+      });
+
+      socket.on("room_public_rooms_list", (rooms) => {
+        publicRoomsDiv.innerHTML = "";
+        rooms.forEach((room) => {
+          const roomCard = document.createElement("div");
+          roomCard.className = "room-card";
+          roomCard.innerHTML = `
+            <h3>${room.name}</h3>
+            <p>Participants: ${room.participants}/${room.maxParticipants}</p>
+        `;
+          roomCard.addEventListener("click", () => joinRoom(room.id));
+          publicRoomsDiv.appendChild(roomCard);
+        });
+      });
+
+      socket.on("room_error", (error) => {
+        alert(error);
+        statusDiv.textContent = error;
+      });
+
+      // UI Helper functions
+      // UI Helper functions
+      function addParticipantVideo(participantId, stream, label) {
+        const existingParticipant = document.getElementById(
+          `participant-${participantId}`
+        );
+        if (existingParticipant) {
+          return;
+        }
+
+        const participantDiv = document.createElement("div");
+        participantDiv.id = `participant-${participantId}`;
+        participantDiv.className = "participant-video";
+
+        const video = document.createElement("video");
+        video.autoplay = true;
+        video.playsInline = true;
+        if (participantId === socket.id) {
+          video.muted = true;
+        }
+        video.srcObject = stream;
+
+        const labelDiv = document.createElement("div");
+        labelDiv.className = "participant-label";
+        labelDiv.textContent = label;
+
+        participantDiv.appendChild(video);
+        participantDiv.appendChild(labelDiv);
+        participantsList.appendChild(participantDiv);
+      }
+
+      function removeParticipantVideo(participantId) {
+        const participantDiv = document.getElementById(
+          `participant-${participantId}`
+        );
+        if (participantDiv) {
+          participantDiv.remove();
+        }
+      }
+
+      // Event listeners
+      createRoomForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("room-name").value;
+        const isPrivate = document.getElementById("room-private").checked;
+        const maxParticipants = parseInt(
+          document.getElementById("max-participants").value
+        );
+
+        socket.emit("create_room", { name, isPrivate, maxParticipants });
+      });
+
+      joinBtn.addEventListener("click", () => {
+        const roomCode = roomCodeInput.value.trim();
+        if (roomCode) {
+          joinRoom(roomCode);
+        }
+      });
+
+      async function joinRoom(roomId) {
+        if (!localStream) {
+          const success = await initializeMedia();
+          if (!success) return;
+        }
+        socket.emit("join_room", roomId);
+        currentRoom = roomId;
+      }
+
+      leaveBtn.addEventListener("click", () => {
+        socket.emit("leave_room");
+        cleanup();
+        currentRoom = null;
+        roomContent.style.display = "none";
+        document.querySelector(".room-section").style.display = "block";
+        statusDiv.textContent = "Select a room to join or create a new one";
+      });
+
+      sendBtn.addEventListener("click", () => {
+        const message = messageInput.value.trim();
+        if (message && currentRoom) {
+          socket.emit("room_send_message", message);
+          messageInput.value = "";
+        }
+      });
+
+      messageInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          sendBtn.click();
+        }
+      });
+
+      function appendMessage(message, type, senderId) {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent =
+          type === "sent" ? `You: ${message}` : `User ${senderId}: ${message}`;
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function cleanup() {
+        // Close all peer connections
+        peerConnections.forEach((pc) => {
+          pc.close();
+        });
+        peerConnections.clear();
+
+        // Stop all tracks in local stream
+        if (localStream) {
+          localStream.getTracks().forEach((track) => track.stop());
+          localStream = null;
+        }
+
+        // Clear participants list
+        participantsList.innerHTML = "";
+
+        // Clear chat
+        chatContainer.innerHTML = "";
+      }
+      // Initial load of public rooms
+      socket.emit("get_public_rooms");
+
+      // Clean up when leaving the page
+      window.onbeforeunload = () => {
+        if (currentRoom) {
+          socket.emit("leave_room");
+        }
+        cleanup();
+      };
+    </script>
+  </body>
+</html>
