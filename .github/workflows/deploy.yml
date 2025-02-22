@@ -1,0 +1,29 @@
+name: Deploy Node.js App
+
+on:
+  push:
+    branches:
+      - main  # Change this to your branch name if needed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd  home/vikasjain/random-video-chat  # Change this to your project directory
+            git pull origin main  # Pull the latest changes
+            npm install  # Install dependencies
+            pm2 stop myapp || true  # Stop the existing process (ignore errors if not running)
+            pm2 start npm --name "myapp" -- start  # Restart the app
+            pm2 save  # Save process list
+            pm2 restart myapp  # Restart app to ensure smooth deployment
